@@ -217,17 +217,19 @@ if __name__ == "__main__":
         f = args.read
     except AttributeError:
         account = input_account()
-    try:
-        f = open(f)
-    except FileNotFoundError as e:
-        print(e)
-        account = input_account()
-    try:
-        data = json.load(f)
-        account = {"username": data["username"], "passwd": data["passwd"]}
-    except KeyError as e:
-        print(f"Missing key {e}")
-        account = input_account()
+    else:
+        try:
+            f = open(f)
+        except FileNotFoundError as e:
+            print(e)
+            account = input_account()
+        else:
+            try:
+                data = json.load(f)
+                account = {"username": data["username"], "passwd": data["passwd"]}
+            except KeyError as e:
+                print(f"Missing key {e}")
+                account = input_account()
     login(account)
     # for page in range(1, 167):
     #     get_page_courses(page)
