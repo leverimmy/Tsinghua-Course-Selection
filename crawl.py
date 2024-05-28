@@ -19,7 +19,7 @@ cookies = {"JSESSIONID": JSESSIONID}
 all_data = {}
 
 
-def set_account() -> dict:
+def input_account() -> dict:
     username = input("Username: ")
     passwd = input("Password: ")
     account = {"username": username, "passwd": passwd}
@@ -52,7 +52,7 @@ def login(account):
         "captchaflag": "login",
         "_login_image_": captcha,
     }
-    _response = requests.post(
+    _response = requests.get(
         LOGIN_URL, cookies=cookies, allow_redirects=False
     )  # 这个请求不发应该也没有问题
     _response = requests.post(
@@ -216,18 +216,18 @@ if __name__ == "__main__":
     try:
         f = args.read
     except AttributeError:
-        account = set_account()
+        account = input_account()
     try:
         f = open(f)
     except FileNotFoundError as e:
         print(e)
-        account = set_account()
+        account = input_account()
     try:
         data = json.load(f)
         account = {"username": data["username"], "passwd": data["passwd"]}
     except KeyError as e:
         print(f"Missing key {e}")
-        account = set_account()
+        account = input_account()
     login(account)
     # for page in range(1, 167):
     #     get_page_courses(page)
