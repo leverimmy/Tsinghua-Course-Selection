@@ -3,14 +3,61 @@ import requests
 import re
 import json
 from bs4 import BeautifulSoup
+from PIL import Image
+from os import remove
+from time import sleep
 
 JSESSIONID = ""
 BASE_URL_1 = "https://zhjwxk.cic.tsinghua.edu.cn/xkBks.xkBksZytjb.do"
 BASE_URL_2 = "https://zhjwxk.cic.tsinghua.edu.cn/xkBks.vxkBksJxjhBs.do"
+CAPTCHA_URL = "https://zhjwxk.cic.tsinghua.edu.cn/login-jcaptcah.jpg?captchaflag=login1"
+LOGIN_URL = "https://zhjwxk.cic.tsinghua.edu.cn/xklogin.do"
+SUBMIT_LOGIN_URL = "https://zhjwxk.cic.tsinghua.edu.cn/j_acegi_formlogin_xsxk.do"
 p_xnxq = "2024-2025-1"
 
 cookies = {"JSESSIONID": JSESSIONID}
 all_data = {}
+
+
+def input_account() -> dict:
+    username = input("Username: ")
+    passwd = input("Password: ")
+    account = {"username": username, "passwd": passwd}
+    with open("account.json", "w") as f:
+        json.dump(account, f)
+    return account
+
+
+def get_captcha() -> str:
+    # 人工智能识别验证码
+    response = requests.get(
+        CAPTCHA_URL,
+        cookies=cookies,
+    )
+    with open("captcha.jpg", "wb") as f:
+        f.write(response.content)
+    img = Image.open("captcha.jpg")
+    img.show()
+    sleep(0.8)
+    txt = input("Captcha: ")
+    remove("captcha.jpg")
+    return txt
+
+
+def login(account):
+    captcha = get_captcha()
+    data = {
+        "j_username": account["username"],
+        "j_password": account["passwd"],
+        "captchaflag": "login",
+        "_login_image_": captcha,
+    }
+    _response = requests.get(
+        LOGIN_URL, cookies=cookies, allow_redirects=False
+    )  # 这个请求不发应该也没有问题
+    _response = requests.post(
+        SUBMIT_LOGIN_URL, cookies=cookies, data=data, allow_redirects=False
+    )
 
 
 def get_selection_array(raw_selection_array):
@@ -38,7 +85,9 @@ def get_page_courses(page_num):
         soup = BeautifulSoup(response.text, "html.parser")
 
         # 使用正则表达式查找包含 gridData 定义的 <script> 标签
-        script_tags = soup.find_all("script", text=lambda text: "var gridData" in str(text))
+        script_tags = soup.find_all(
+            "script", string=lambda text: "var gridData" in str(text)
+        )
 
         if script_tags:
             # 遍历所有 <script> 标签,提取 gridData 定义
@@ -46,8 +95,9 @@ def get_page_courses(page_num):
                 script_text = script_tag.string
 
                 if script_text:
-
-                    grid_data_definition = re.search(r"var gridData = (.*);", script_text, re.DOTALL)
+                    grid_data_definition = re.search(
+                        r"var gridData = (.*);", script_text, re.DOTALL
+                    )
 
                     if grid_data_definition:
                         grid_data_content = grid_data_definition.group(1).strip()
@@ -88,7 +138,9 @@ def get_page_pe(page_num):
         soup = BeautifulSoup(response.text, "html.parser")
 
         # 使用正则表达式查找包含 gridData 定义的 <script> 标签
-        script_tags = soup.find_all("script", text=lambda text: "var gridData" in str(text))
+        script_tags = soup.find_all(
+            "script", string=lambda text: "var gridData" in str(text)
+        )
 
         if script_tags:
             # 遍历所有 <script> 标签,提取 gridData 定义
@@ -96,8 +148,9 @@ def get_page_pe(page_num):
                 script_text = script_tag.string
 
                 if script_text:
-
-                    grid_data_definition = re.search(r"var gridData = (.*);", script_text, re.DOTALL)
+                    grid_data_definition = re.search(
+                        r"var gridData = (.*);", script_text, re.DOTALL
+                    )
 
                     if grid_data_definition:
                         grid_data_content = grid_data_definition.group(1).strip()
@@ -144,7 +197,9 @@ def get_page_teacher(page_num):
                 if num in all_data:
                     if idx in all_data[num]:
                         if cols[5].find("a") is not None:
-                            all_data[num][idx]["主讲教师"] = cols[5].find("a").text.strip()
+                            all_data[num][idx]["主讲教师"] = (
+                                cols[5].find("a").text.strip()
+                            )
                         all_data[num][idx]["上课时间"] = cols[10].text.strip()
             else:
                 print(cols)
@@ -155,9 +210,27 @@ def get_page_teacher(page_num):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-j", "--jsessionid", help="Your JSESSIONID", required=True)
+    parser.add_argument("-r", "--read", help="Read account from JSON file")
     args = parser.parse_args()
     JSESSIONID = args.jsessionid
-
+    try:
+        f = args.read
+    except AttributeError:
+        account = input_account()
+    else:
+        try:
+            f = open(f)
+        except FileNotFoundError as e:
+            print(e)
+            account = input_account()
+        else:
+            try:
+                data = json.load(f)
+                account = {"username": data["username"], "passwd": data["passwd"]}
+            except KeyError as e:
+                print(f"Missing key {e}")
+                account = input_account()
+    login(account)
     # for page in range(1, 167):
     #     get_page_courses(page)
     # for page in range(1, 19):
