@@ -1,4 +1,4 @@
-import argparse
+import ddddocr
 import requests
 import re
 import json
@@ -7,25 +7,19 @@ from PIL import Image
 from os import remove
 from time import sleep
 
-JSESSIONID = ""
+from tqdm import tqdm
+
+JSESSIONID = "hcydsg_V4CAIBe2TOZHoz"
 BASE_URL_1 = "https://zhjwxk.cic.tsinghua.edu.cn/xkBks.xkBksZytjb.do"
 BASE_URL_2 = "https://zhjwxk.cic.tsinghua.edu.cn/xkBks.vxkBksJxjhBs.do"
 CAPTCHA_URL = "https://zhjwxk.cic.tsinghua.edu.cn/login-jcaptcah.jpg?captchaflag=login1"
-LOGIN_URL = "https://zhjwxk.cic.tsinghua.edu.cn/xklogin.do"
 SUBMIT_LOGIN_URL = "https://zhjwxk.cic.tsinghua.edu.cn/j_acegi_formlogin_xsxk.do"
-p_xnxq = "2024-2025-1"
+P_XNXQ = "2024-2025-2"
 
 cookies = {"JSESSIONID": JSESSIONID}
 all_data = {}
 
-
-def input_account() -> dict:
-    username = input("Username: ")
-    passwd = input("Password: ")
-    account = {"username": username, "passwd": passwd}
-    with open("account.json", "w") as f:
-        json.dump(account, f)
-    return account
+ocr = ddddocr.DdddOcr(show_ad=False)
 
 
 def get_captcha() -> str:
@@ -34,13 +28,14 @@ def get_captcha() -> str:
         CAPTCHA_URL,
         cookies=cookies,
     )
-    with open("captcha.jpg", "wb") as f:
-        f.write(response.content)
-    img = Image.open("captcha.jpg")
-    img.show()
-    sleep(0.8)
-    txt = input("Captcha: ")
-    remove("captcha.jpg")
+
+    img = response.content
+    ocr.set_ranges(5)
+    result = ocr.classification(img, probability=True)
+    txt = ""
+    for i in result['probability']:
+        txt += result['charsets'][i.index(max(i))]
+
     return txt
 
 
@@ -49,15 +44,10 @@ def login(account):
     data = {
         "j_username": account["username"],
         "j_password": account["passwd"],
-        "captchaflag": "login",
+        "captchaflag": "login1",
         "_login_image_": captcha,
     }
-    _response = requests.get(
-        LOGIN_URL, cookies=cookies, allow_redirects=False
-    )  # 这个请求不发应该也没有问题
-    _response = requests.post(
-        SUBMIT_LOGIN_URL, cookies=cookies, data=data, allow_redirects=False
-    )
+    _response = requests.post(SUBMIT_LOGIN_URL, cookies=cookies, data=data)
 
 
 def get_selection_array(raw_selection_array):
@@ -77,7 +67,7 @@ def get_selection_array(raw_selection_array):
 
 
 def get_page_courses(page_num):
-    url = f"{BASE_URL_1}?m=tbzySearchBR&page={page_num}&p_xnxq={p_xnxq}"
+    url = f"{BASE_URL_1}?m=tbzySearchBR&page={page_num}&p_xnxq={P_XNXQ}"
     response = requests.get(url, cookies=cookies)
 
     if response.status_code == 200:
@@ -130,7 +120,7 @@ def get_page_courses(page_num):
 
 
 def get_page_pe(page_num):
-    url = f"{BASE_URL_1}?m=tbzySearchTy&page={page_num}&p_xnxq={p_xnxq}"
+    url = f"{BASE_URL_1}?m=tbzySearchTy&page={page_num}&p_xnxq={P_XNXQ}"
     response = requests.get(url, cookies=cookies)
 
     if response.status_code == 200:
@@ -184,7 +174,7 @@ def get_page_pe(page_num):
 
 
 def get_page_teacher(page_num):
-    url = f"{BASE_URL_2}?m=kkxxSearch&page={page_num}&p_xnxq={p_xnxq}"
+    url = f"{BASE_URL_2}?m=kkxxSearch&page={page_num}&p_xnxq={P_XNXQ}"
     response = requests.get(url, cookies=cookies)
     if response.status_code == 200:
         # 使用 BeautifulSoup 解析 HTML 内容
@@ -208,34 +198,15 @@ def get_page_teacher(page_num):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-j", "--jsessionid", help="Your JSESSIONID", required=True)
-    parser.add_argument("-r", "--read", help="Read account from JSON file")
-    args = parser.parse_args()
-    JSESSIONID = args.jsessionid
-    try:
-        f = args.read
-    except AttributeError:
-        account = input_account()
-    else:
-        try:
-            f = open(f)
-        except FileNotFoundError as e:
-            print(e)
-            account = input_account()
-        else:
-            try:
-                data = json.load(f)
-                account = {"username": data["username"], "passwd": data["passwd"]}
-            except KeyError as e:
-                print(f"Missing key {e}")
-                account = input_account()
-    login(account)
-    # for page in range(1, 167):
-    #     get_page_courses(page)
-    # for page in range(1, 19):
-    #     get_page_pe(page)
-    # for page in range(1, 284):
-    #     get_page_teacher(page)
-    # with open("courses.json", "w", encoding="utf-8") as f:
-    #     json.dump(all_data, f, ensure_ascii=False, indent=4)
+    with open("account.json") as f:
+        data = json.load(f)
+        account = {"username": data["username"], "passwd": data["passwd"]}
+        login(account)
+    for page in tqdm(range(1, 158)):
+        get_page_courses(page)
+    for page in tqdm(range(1, 20)):
+        get_page_pe(page)
+    for page in tqdm(range(1, 254)):
+        get_page_teacher(page)
+    with open("courses.json", "w", encoding="utf-8") as f:
+        json.dump(all_data, f, ensure_ascii=False, indent=4)

@@ -1,7 +1,7 @@
 import json
 
 # 读取 JSON 数据
-with open("courses.json", "r", encoding="utf-8") as f:
+with open("courses_2024_12_07_20_00_00.json", "r", encoding="utf-8") as f:
     course_data = json.load(f)
 
 # 计算每个课程的 报名总人数/可选容量 比值并存储

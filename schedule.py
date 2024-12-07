@@ -2,9 +2,8 @@ import json
 import re
 from openpyxl import Workbook
 
-wanted_courses = ["40240354", "10721011", "20240082", "30240063",
-                  "40240513", "70612833", "30240382", "40260262",
-                  "10260062", "10691572", "84760053", "30240292"]
+wanted_courses = ["30240243", "40240443", "30240573", "20240033",
+                  "40241052", "00780461", "10721041"]
 
 options = {}
 n = 0
@@ -12,7 +11,7 @@ data = {}
 result = []
 tables = []
 
-
+# TODO: 形如 4-1(1-2周),(3-16周)，5-4(前八周),2-1(前八周)
 def get_day_weeks(time_range):
     match = re.match(r"(\d+-\d+)\((.*?)周\)", time_range)
     options_list = match.group(2).split(",")
