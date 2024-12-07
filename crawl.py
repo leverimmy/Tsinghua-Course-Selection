@@ -3,10 +3,6 @@ import requests
 import re
 import json
 from bs4 import BeautifulSoup
-from PIL import Image
-from os import remove
-from time import sleep
-
 from tqdm import tqdm
 
 JSESSIONID = "hcydsg_V4CAIBe2TOZHoz"
@@ -43,7 +39,7 @@ def login(account):
     captcha = get_captcha()
     data = {
         "j_username": account["username"],
-        "j_password": account["passwd"],
+        "j_password": account["password"],
         "captchaflag": "login1",
         "_login_image_": captcha,
     }
@@ -200,7 +196,7 @@ def get_page_teacher(page_num):
 if __name__ == "__main__":
     with open("account.json") as f:
         data = json.load(f)
-        account = {"username": data["username"], "passwd": data["passwd"]}
+        account = {"username": data["username"], "password": data["password"]}
         login(account)
     for page in tqdm(range(1, 158)):
         get_page_courses(page)
